@@ -1,0 +1,128 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  SageMakerProjectName:
+    Type: String
+    Description: Name of the project
+  PrimaryNodeInstanceType:
+    Type: String
+    Description: Instance type of the EMR master node.
+    Default: m5.xlarge
+    AllowedValues:
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+  PrimaryNodeInstanceCount:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 2
+  CoreNodeInstanceType:
+    Type: String
+    Description: Instance type of the EMR master node.
+    Default: m5.xlarge
+    AllowedValues:
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+  CoreNodeInstanceCount:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 2
+  TaskNodeInstanceType:
+    Type: String
+    Description: Instance type of the EMR master node.
+    Default: m5.xlarge
+    AllowedValues:
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+  TaskNodeInstanceCount:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 5
+  SageMakerProjectId:
+    Type: String
+    Description: Service generated Id of the project.
+  ClusterName:
+    Type: String
+    Description: Name for your EMR Cluster. MODIFY.
+    Default: "sample-cluster-called-from-sagemaker-studio"
+  EMRServiceRole:
+    Type: String
+    Description: ARN of the EMR Service Role. Do not modify.
+    Default: "arn:aws:iam::623127157773:role/EMR_ServiceRole"
+  EMRJobFlowRole:
+    Type: String
+    Description: ARN of the EMR JobFlow Role. Do not modify.
+    Default: "arn:aws:iam::623127157773:instance-profile/EMR_EC2_InstanceProfile"
+  SecurityGroup:
+    Type: String
+    Description: Security Group ID for the EMR Cluster. Do not modify.
+    Default: "sg-0442061e0876a9dd4" #must known before.
+  ServiceAccessSecurityGroup:
+    Type: String
+    Description: Security Group ID for the EMR Cluster. Do not modify.
+    Default: "sg-04d208a48626a1675" #must known before.
+  SubnetEntrance:
+    Type: String
+    Description: SubnetID for EC2. Do not modify.
+    Default: "subnet-097a091aa8ce2c80a" #must known before.
+  BootstrapScriptS3Path:
+    Type: String
+    Description: S3 path to the bootstrap script.
+    Default: "s3://emr-sagemaker-bridge-artifacts-jddgkjg08n9u3kn/bootstrap/general-bootstrap.sh" #must known before.
+  LogUri:
+    Type: String
+    Description: S3 path for EMR logs.
+    Default: "s3://emr-sagemaker-bridge-artifacts-jddgkjg08n9u3kn/elasticmapreduce-logs" #must known before.
+
+Resources:
+  EMRCluster:
+    Type: AWS::EMR::Cluster
+    Properties:
+      Name: !Ref ClusterName
+      ReleaseLabel: "emr-7.1.0"
+      AutoTerminationPolicy:
+        IdleTimeout: 1800
+      BootstrapActions:
+        - Name: general-bootstrap
+          ScriptBootstrapAction:
+            Path: !Ref BootstrapScriptS3Path
+      Applications:
+        - Name: Spark
+        - Name: Livy
+        - Name: JupyterEnterpriseGateway
+      Instances:
+        MasterInstanceGroup:
+          Name: MasterNodes
+          InstanceCount: !Ref PrimaryNodeInstanceCount
+          InstanceType: !Ref PrimaryNodeInstanceType
+          Market: ON_DEMAND
+        CoreInstanceGroup:
+          Name: CoreNodes
+          InstanceCount: !Ref CoreNodeInstanceCount
+          InstanceType: !Ref CoreNodeInstanceType
+          Market: ON_DEMAND
+        TaskInstanceGroups:
+          - Name: TaskNodes1
+            InstanceCount: !Ref TaskNodeInstanceCount
+            InstanceType: !Ref TaskNodeInstanceType
+            Market: ON_DEMAND
+        Ec2SubnetId: !Ref SubnetEntrance
+        EmrManagedMasterSecurityGroup: !Ref SecurityGroup
+        EmrManagedSlaveSecurityGroup: !Ref SecurityGroup
+        ServiceAccessSecurityGroup: !Ref ServiceAccessSecurityGroup
+      ServiceRole: !Ref EMRServiceRole
+      JobFlowRole: !Ref EMRJobFlowRole
+      LogUri: !Ref LogUri
+      VisibleToAllUsers: true
+      Tags:
+        - Key: owner
+          Value: herley
+
+Outputs:
+  ClusterName:
+    Description: Name of the EMR Cluster
+    Value: !Ref ClusterName
